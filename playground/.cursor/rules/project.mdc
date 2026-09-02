@@ -1,0 +1,12 @@
+---
+description: Playground project rules for the Cursor clone agent
+alwaysApply: true
+---
+
+This playground is a tiny TypeScript sample. Prefer focused edits.
+
+- Public API: keep `login` and `requireUser` signatures unless the user asks to change them.
+- Intentional bug: `src/auth.ts` compares `password === password`, so any password works for `admin`.
+- Fix by comparing against a stored admin password constant, not by weakening types.
+- `src/index.ts` should stay a thin caller.
+- Do not add dependencies or rewrite the project unless asked.
