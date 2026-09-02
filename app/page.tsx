@@ -1,117 +1,55 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  Bell,
-  Bot,
-  ChevronDown,
-  ChevronRight,
-  CircleDot,
-  Cloud,
-  Code2,
-  Command,
-  FileCode2,
-  FileJson,
-  Files,
-  Folder,
-  GitBranch,
-  GitCommitHorizontal,
-  GitPullRequest,
-  Hash,
-  Menu,
-  MessageSquare,
-  MoreHorizontal,
-  PanelLeft,
-  Play,
-  Plus,
-  Search,
-  Settings,
-  Sparkles,
-  TerminalSquare,
-  X,
-} from 'lucide-react'
+import { Bell, Bot, Check, ChevronDown, ChevronRight, CircleDot, Cloud, Code2, Command, FileCode2, FileJson, Files, Folder, GitBranch, GitCommitHorizontal, GitPullRequest, Menu, MessageSquare, MoreHorizontal, PanelLeft, Play, Plus, Search, Settings, Sparkles, TerminalSquare, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+type Panel = 'explorer' | 'search' | 'git' | 'agent' | 'extensions'
+type Bottom = 'terminal' | 'problems' | 'output'
 const files = [
-  { name: 'page.tsx', icon: FileCode2, active: true },
-  { name: 'layout.tsx', icon: FileCode2 },
-  { name: 'globals.css', icon: Hash },
-  { name: 'package.json', icon: FileJson },
+  { name: 'page.tsx', icon: FileCode2 }, { name: 'layout.tsx', icon: FileCode2 },
+  { name: 'globals.css', icon: Code2 }, { name: 'package.json', icon: FileJson },
 ]
-
-const codeLines = [
-  ['keyword', 'import'], ['plain', " { useState } from 'react'"],
-  ['plain', ''],
-  ['keyword', 'export default function'], ['plain', ' Home() {'],
-  ['plain', '  '], ['keyword', 'const'], ['plain', ' [count, setCount] = '], ['keyword', 'useState'], ['plain', '(0)'],
-  ['plain', ''],
-  ['keyword', 'return'], ['plain', ' ('],
-  ['plain', '    <'], ['tag', 'main'], ['plain', ' className='], ['string', '"min-h-screen p-8"'], ['plain', '>'],
-  ['plain', '      <'], ['tag', 'h1'], ['plain', '>'], ['plain', 'Welcome back'], ['plain', '</'], ['tag', 'h1'], ['plain', '>'],
-  ['plain', '      <'], ['tag', 'button'], ['plain', ' onClick={() => setCount(count + 1)}'],
-  ['plain', '>'],
-  ['plain', '        Clicked '], ['expression', '{count}'], ['plain', ' times'],
-  ['plain', '      </'], ['tag', 'button'], ['plain', '>'],
-  ['plain', '    </'], ['tag', 'main'], ['plain', '>'],
-  ['plain', '  )'],
-  ['plain', '}'],
-]
+const code = [`import { useState } from 'react'`, ``, `export default function Home() {`, `  const [count, setCount] = useState(0)`, ``, `  return (`, `    <main className="min-h-screen p-8">`, `      <h1>Welcome back</h1>`, `      <button onClick={() => setCount(count + 1)}>`, `        Clicked {count} times`, `      </button>`, `    </main>`, `  )`, `}`]
 
 export default function Page() {
+  const [panel, setPanel] = useState<Panel>('explorer')
   const [activeFile, setActiveFile] = useState('page.tsx')
+  const [openFiles, setOpenFiles] = useState(['page.tsx'])
+  const [bottom, setBottom] = useState<Bottom>('terminal')
   const [chatOpen, setChatOpen] = useState(true)
+  const [query, setQuery] = useState('')
   const [prompt, setPrompt] = useState('')
-  const [activeTab, setActiveTab] = useState<'explorer' | 'search'>('explorer')
-  const [bottomPanel, setBottomPanel] = useState<'terminal' | 'problems' | 'output'>('terminal')
-  const [sidePanel, setSidePanel] = useState<'explorer' | 'search' | 'git' | 'agent'>('explorer')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [gitMessage, setGitMessage] = useState('')
+  const [messages, setMessages] = useState<string[]>([])
+  const [menu, setMenu] = useState<string | null>(null)
+  const [staged, setStaged] = useState<string[]>([])
+  const [commit, setCommit] = useState('')
+  const [terminal, setTerminal] = useState(['ready - started server on 0.0.0.0:3000', 'compiled successfully in 842ms'])
+  const [notice, setNotice] = useState('Ready')
+  const open = (name: string) => { setActiveFile(name); if (!openFiles.includes(name)) setOpenFiles([...openFiles, name]) }
+  const send = (text = prompt) => { if (!text.trim()) return; setMessages([...messages, `You: ${text}`, 'Cursor: I reviewed the workspace and prepared a focused response.']); setPrompt(''); setNotice('Agent response ready') }
+  const action = (name: string) => { setNotice(name); setMenu(null) }
 
-  return (
-    <main className="flex h-screen min-h-[620px] flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-3 text-xs">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="size-8"><Menu data-icon="inline-start" /></Button>
-          <div className="flex items-center gap-2 font-semibold"><span className="flex size-5 items-center justify-center rounded bg-primary text-[10px] text-primary-foreground">⌁</span> Cursor</div>
-          <div className="hidden items-center gap-1 text-muted-foreground sm:flex"><ChevronRight className="size-3" /> playground</div>
-        </div>
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <Button variant="ghost" size="sm" className="hidden gap-2 sm:flex"><GitBranch data-icon="inline-start" /> main <ChevronDown /></Button>
-          <Button variant="ghost" size="icon" className="size-8"><Cloud /></Button>
-          <Button variant="ghost" size="icon" className="size-8"><Settings /></Button>
-          <div className="ml-2 size-5 rounded-full bg-accent ring-2 ring-background" aria-label="User avatar" />
-        </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-12 shrink-0 flex-col items-center border-r bg-card py-3 md:flex">
-          <Button variant="ghost" size="icon" aria-label="Explorer" onClick={() => setSidePanel('explorer')} className={`size-9 ${sidePanel === 'explorer' ? 'text-foreground' : 'text-muted-foreground'}`}><Files /></Button>
-          <Button variant="ghost" size="icon" aria-label="Search" onClick={() => setSidePanel('search')} className={`size-9 ${sidePanel === 'search' ? 'text-foreground' : 'text-muted-foreground'}`}><Search /></Button>
-          <Button variant="ghost" size="icon" aria-label="Source control" onClick={() => setSidePanel('git')} className={`size-9 ${sidePanel === 'git' ? 'text-foreground' : 'text-muted-foreground'}`}><GitPullRequest /></Button>
-          <Button variant="ghost" size="icon" aria-label="Agent" onClick={() => setSidePanel('agent')} className={`size-9 ${sidePanel === 'agent' ? 'text-foreground' : 'text-muted-foreground'}`}><Bot /></Button>
-          <div className="mt-auto flex flex-col gap-1"><Button variant="ghost" size="icon" className="size-9 text-muted-foreground"><Bell /></Button><Button variant="ghost" size="icon" className="size-9 text-muted-foreground"><PanelLeft /></Button></div>
-        </aside>
-
-        <section className="flex w-60 shrink-0 flex-col border-r bg-card max-md:hidden">
-          <div className="flex h-11 items-center justify-between border-b px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <div className="flex gap-1"><button onClick={() => { setActiveTab('explorer'); setSidePanel('explorer') }} className={sidePanel === 'explorer' ? 'text-foreground' : ''}>Explorer</button><button onClick={() => { setActiveTab('search'); setSidePanel('search') }} className={sidePanel === 'search' ? 'ml-3 text-foreground' : 'ml-3'}>Search</button></div>
-            <MoreHorizontal className="size-4" />
-          </div>
-          {sidePanel === 'explorer' ? <div className="flex flex-col gap-1 p-2 text-sm"><div className="flex items-center gap-1 px-1 py-2 text-xs font-semibold"><ChevronDown className="size-3" /> PLAYGROUND</div><div className="flex items-center gap-2 px-2 py-1 text-muted-foreground"><Folder className="size-4" /> app</div>{files.map((file) => <button key={file.name} onClick={() => setActiveFile(file.name)} className={`flex items-center gap-2 rounded px-7 py-1.5 text-left text-xs ${activeFile === file.name ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60'}`}><file.icon className="size-3.5" />{file.name}</button>)}</div> : sidePanel === 'search' ? <div className="flex flex-col gap-3 p-3"><input autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search files..." className="h-8 rounded border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring" /><div className="text-xs text-muted-foreground">{searchQuery ? `Results for “${searchQuery}”` : 'Search across your project'}</div>{searchQuery && files.filter((file) => file.name.includes(searchQuery)).map((file) => <button key={file.name} onClick={() => { setActiveFile(file.name); setSidePanel('explorer') }} className="flex items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground"><file.icon className="size-3.5" />{file.name}</button>)}</div> : sidePanel === 'git' ? <div className="flex flex-col gap-4 p-3"><div className="flex items-center justify-between text-xs font-medium"><span>Source Control</span><span className="rounded bg-accent px-1.5 py-0.5 text-[10px]">3</span></div><div className="flex flex-col gap-2 text-xs text-muted-foreground"><div className="flex items-center gap-2"><GitCommitHorizontal className="size-3.5 text-primary" /> page.tsx <span className="ml-auto text-primary">M</span></div><div className="flex items-center gap-2"><GitCommitHorizontal className="size-3.5 text-primary" /> globals.css <span className="ml-auto text-primary">M</span></div></div><input value={gitMessage} onChange={(e) => setGitMessage(e.target.value)} placeholder="Message (optional)" className="h-8 rounded border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring" /><Button size="sm" disabled={!gitMessage.trim()}>Commit changes</Button></div> : <div className="flex flex-col gap-4 p-3"><div className="flex items-center gap-2 text-sm font-medium"><Bot className="size-4 text-primary" /> Agent</div><p className="text-xs leading-5 text-muted-foreground">Plan, edit, and review changes across your workspace.</p><Button size="sm" onClick={() => setChatOpen(true)}>Open agent chat</Button><div className="rounded border bg-background p-3 text-xs text-muted-foreground">No active tasks</div></div>}
-          <div className="mt-auto border-t p-3 text-xs text-muted-foreground"><div className="flex items-center gap-2"><GitCommitHorizontal className="size-3.5" /> 3 changes</div><div className="mt-3 flex items-center gap-2"><CircleDot className="size-3.5" /> No problems</div></div>
-        </section>
-
-        <section className="flex min-w-0 flex-1 flex-col bg-background">
-          <div className="flex h-11 shrink-0 items-center border-b bg-card px-3"><div className="flex h-full items-center gap-2 border-b-2 border-primary px-3 text-xs"><FileCode2 className="size-3.5" />{activeFile}<X className="ml-4 size-3 text-muted-foreground" /></div><Button variant="ghost" size="icon" className="ml-auto size-8"><Plus /></Button></div>
-          <div className="flex min-h-0 flex-1 overflow-auto"><div className="w-12 shrink-0 select-none border-r py-4 text-right font-mono text-xs leading-6 text-muted-foreground/60">{codeLines.map((_, i) => <div key={i} className="px-3">{i + 1}</div>)}</div><pre className="min-w-[520px] flex-1 p-4 font-mono text-[13px] leading-6"><code>{codeLines.map(([kind, text], i) => <span key={i} className={`token-${kind}`}>{text}{i < codeLines.length - 1 && '\n'}</span>)}</code></pre><div className="hidden w-14 shrink-0 border-l p-2 lg:block"><div className="flex flex-col gap-0.5 opacity-60">{Array.from({ length: 34 }).map((_, i) => <div key={i} className={`h-1 rounded-sm ${i % 5 === 0 ? 'bg-primary/70' : 'bg-muted-foreground/40'}`} style={{ width: `${35 + (i * 17) % 55}%` }} />)}</div></div></div>
-          <div className="flex shrink-0 flex-col border-t bg-card"><div className="flex h-9 items-center gap-5 border-b px-3 text-[11px] font-medium text-muted-foreground"><button onClick={() => setBottomPanel('terminal')} className={bottomPanel === 'terminal' ? 'h-full border-b-2 border-primary text-foreground' : ''}>Terminal</button><button onClick={() => setBottomPanel('problems')} className={bottomPanel === 'problems' ? 'h-full border-b-2 border-primary text-foreground' : ''}>Problems <span className="ml-1 rounded bg-accent px-1.5 py-0.5 text-[10px]">0</span></button><button onClick={() => setBottomPanel('output')} className={bottomPanel === 'output' ? 'h-full border-b-2 border-primary text-foreground' : ''}>Output</button><MoreHorizontal className="ml-auto size-4" /></div><div className="h-24 overflow-auto p-3 font-mono text-[11px] leading-5 text-muted-foreground">{bottomPanel === 'terminal' ? <><div><span className="text-primary">➜</span> <span className="text-foreground">playground</span> git:(main) <span className="text-primary">$</span> pnpm dev</div><div>ready - started server on 0.0.0.0:3000</div><div className="text-primary">compiled successfully in 842ms</div></> : bottomPanel === 'problems' ? <div className="text-primary">No problems have been detected in the workspace.</div> : <div>Watching for file changes...</div>}</div></div>
-          <div className="flex h-10 shrink-0 items-center justify-between border-t bg-card px-3 text-xs text-muted-foreground"><div className="flex items-center gap-3"><span className="flex items-center gap-1"><GitBranch className="size-3.5" /> main</span><span>Ln 4, Col 28</span><span className="hidden sm:inline">Spaces: 2</span></div><div className="flex items-center gap-3"><span>TypeScript JSX</span><span>UTF-8</span></div></div>
-        </section>
-
-        {chatOpen && <aside className="flex w-80 shrink-0 flex-col border-l bg-card max-lg:hidden"><div className="flex h-11 items-center justify-between border-b px-4"><div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="size-4" /> Ask Cursor</div><Button variant="ghost" size="icon" className="size-8" onClick={() => setChatOpen(false)}><X /></Button></div><div className="flex flex-1 flex-col justify-end gap-4 overflow-auto p-4"><div className="rounded-lg border bg-background p-3 text-sm leading-6">How can I help with your code today?</div><div className="flex flex-wrap gap-2"><button className="rounded-md border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent">Explain this file</button><button className="rounded-md border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent">Find bugs</button></div></div><div className="border-t p-3"><div className="rounded-lg border bg-background p-2 shadow-sm"><textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Ask anything..." className="min-h-16 w-full resize-none bg-transparent p-1 text-sm outline-none placeholder:text-muted-foreground" /><div className="flex items-center justify-between"><div className="flex gap-1"><Button variant="ghost" size="icon" className="size-7"><Plus /></Button><Button variant="ghost" size="icon" className="size-7"><TerminalSquare /></Button></div><Button size="icon" className="size-7" disabled={!prompt.trim()}><Play /></Button></div></div><div className="mt-2 text-center text-[10px] text-muted-foreground">Cursor can make mistakes. Check important info.</div></div></aside>}
-        {!chatOpen && <Button onClick={() => setChatOpen(true)} size="icon" className="fixed bottom-5 right-5 rounded-full shadow-lg"><MessageSquare /></Button>}
-      </div>
-      <div className="flex h-6 shrink-0 items-center justify-between border-t bg-primary px-3 text-[10px] text-primary-foreground"><span className="flex items-center gap-2"><Code2 className="size-3" /> Ready</span><span className="flex items-center gap-3"><span>Prettier</span><span>0 errors</span><Command className="size-3" /></span></div>
-    </main>
-  )
+  return <main className="flex h-screen min-h-[620px] flex-col overflow-hidden bg-background text-foreground">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-3 text-xs">
+      <div className="flex items-center gap-3"><Button variant="ghost" size="icon" aria-label="Open menu" className="size-8" onClick={() => setMenu(menu === 'main' ? null : 'main')}><Menu /></Button><div className="flex items-center gap-2 font-semibold"><span className="flex size-5 items-center justify-center rounded bg-primary text-primary-foreground">⌁</span> Cursor</div><div className="hidden items-center gap-1 text-muted-foreground sm:flex"><ChevronRight className="size-3" /> playground</div></div>
+      <div className="flex items-center gap-1 text-muted-foreground"><Button variant="ghost" size="sm" className="hidden gap-2 sm:flex" onClick={() => setMenu(menu === 'branch' ? null : 'branch')}><GitBranch /> main <ChevronDown /></Button><Button variant="ghost" size="icon" aria-label="Cloud sync" className="size-8" onClick={() => action('Synced to cloud')}><Cloud /></Button><Button variant="ghost" size="icon" aria-label="Settings" className="size-8" onClick={() => setMenu(menu === 'settings' ? null : 'settings')}><Settings /></Button><Button variant="ghost" size="icon" aria-label="User menu" className="size-8" onClick={() => setMenu(menu === 'user' ? null : 'user')}><div className="size-5 rounded-full bg-accent ring-2 ring-background" /></Button></div>
+      {menu && <div className="absolute right-3 top-11 z-10 flex w-48 flex-col gap-1 rounded-md border bg-popover p-1 text-xs shadow-xl">{menu === 'branch' ? ['main', 'feature/agent-ui', 'Create branch'].map(x => <button key={x} onClick={() => action(`Branch: ${x}`)} className="rounded px-3 py-2 text-left hover:bg-accent">{x}</button>) : menu === 'settings' ? ['Editor settings', 'Keyboard shortcuts', 'Theme: Dark'].map(x => <button key={x} onClick={() => action(x)} className="rounded px-3 py-2 text-left hover:bg-accent">{x}</button>) : menu === 'user' ? ['Account', 'Command palette', 'Sign out'].map(x => <button key={x} onClick={() => action(x)} className="rounded px-3 py-2 text-left hover:bg-accent">{x}</button>) : ['New window', 'Open folder', 'Command palette'].map(x => <button key={x} onClick={() => action(x)} className="rounded px-3 py-2 text-left hover:bg-accent">{x}</button>)}</div>}
+    </header>
+    <div className="flex min-h-0 flex-1">
+      <aside className="hidden w-12 shrink-0 flex-col items-center border-r bg-card py-3 md:flex">{([[Files,'explorer','Explorer'],[Search,'search','Search'],[GitPullRequest,'git','Source control'],[Bot,'agent','Agent'],[CircleDot,'extensions','Extensions']] as const).map(([Icon,id,label]) => <Button key={id} variant="ghost" size="icon" aria-label={label} onClick={() => setPanel(id)} className={`size-9 ${panel === id ? 'text-foreground' : 'text-muted-foreground'}`}><Icon /></Button>)}<div className="mt-auto flex flex-col gap-1"><Button variant="ghost" size="icon" aria-label="Notifications" onClick={() => action('No new notifications')} className="size-9 text-muted-foreground"><Bell /></Button><Button variant="ghost" size="icon" aria-label="Toggle panel" onClick={() => setChatOpen(!chatOpen)} className="size-9 text-muted-foreground"><PanelLeft /></Button></div></aside>
+      <section className="flex w-60 shrink-0 flex-col border-r bg-card max-md:hidden"><div className="flex h-11 items-center justify-between border-b px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><span>{panel === 'explorer' ? 'Explorer' : panel === 'search' ? 'Search' : panel === 'git' ? 'Source Control' : panel === 'agent' ? 'Agent' : 'Extensions'}</span><MoreHorizontal className="size-4" /></div>
+        {panel === 'explorer' && <div className="flex flex-col gap-1 p-2 text-sm"><div className="flex items-center gap-1 px-1 py-2 text-xs font-semibold"><ChevronDown className="size-3" /> PLAYGROUND</div><div className="flex items-center gap-2 px-2 py-1 text-muted-foreground"><Folder className="size-4" /> app</div>{files.map(f => <button key={f.name} onClick={() => open(f.name)} className={`flex items-center gap-2 rounded px-7 py-1.5 text-left text-xs ${activeFile === f.name ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60'}`}><f.icon className="size-3.5" />{f.name}</button>)}</div>}
+        {panel === 'search' && <div className="flex flex-col gap-3 p-3"><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search files..." className="h-8 rounded border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring" />{query ? files.filter(f => f.name.includes(query)).map(f => <button key={f.name} onClick={() => { open(f.name); setPanel('explorer') }} className="flex items-center gap-2 text-left text-xs hover:text-foreground"><f.icon className="size-3.5" />{f.name}</button>) : <span className="text-xs text-muted-foreground">Search across your project</span>}{query && !files.some(f => f.name.includes(query)) && <span className="text-xs text-muted-foreground">No results found</span>}</div>}
+        {panel === 'git' && <div className="flex flex-col gap-3 p-3 text-xs"><div className="flex justify-between">Changes <span className="rounded bg-accent px-1.5">3</span></div>{files.slice(0,3).map(f => <button key={f.name} onClick={() => setStaged(staged.includes(f.name) ? staged.filter(x => x !== f.name) : [...staged, f.name])} className="flex items-center gap-2 text-left text-muted-foreground"><span className={`flex size-4 items-center justify-center rounded border ${staged.includes(f.name) ? 'bg-primary text-primary-foreground' : ''}`}>{staged.includes(f.name) && <Check className="size-3" />}</span>{f.name}<span className="ml-auto text-primary">M</span></button>)}<input value={commit} onChange={e => setCommit(e.target.value)} placeholder="Commit message" className="h-8 rounded border bg-background px-2 outline-none" /><Button size="sm" disabled={!commit.trim() || !staged.length} onClick={() => { setNotice(`Committed ${staged.length} files`); setCommit(''); setStaged([]) }}>Commit staged</Button></div>}
+        {panel === 'agent' && <div className="flex flex-col gap-4 p-3 text-xs"><div className="flex items-center gap-2 font-medium"><Bot className="size-4 text-primary" /> Agent</div><p className="leading-5 text-muted-foreground">Plan, edit, and review changes across your workspace.</p>{['Explain this file','Find bugs','Write tests'].map(x => <Button key={x} variant="outline" size="sm" onClick={() => { setChatOpen(true); send(x) }}>{x}</Button>)}</div>}
+        {panel === 'extensions' && <div className="flex flex-col gap-3 p-3 text-xs"><input placeholder="Search extensions" className="h-8 rounded border bg-background px-2 outline-none" />{['ESLint','Prettier','Tailwind CSS IntelliSense'].map(x => <button key={x} onClick={() => action(`${x} enabled`)} className="flex items-center justify-between rounded p-2 text-left hover:bg-accent"><span>{x}</span><Plus className="size-3.5" /></button>)}</div>}
+        <div className="mt-auto border-t p-3 text-xs text-muted-foreground"><button onClick={() => setPanel('git')} className="flex items-center gap-2 hover:text-foreground"><GitCommitHorizontal className="size-3.5" /> {staged.length ? `${staged.length} staged` : '3 changes'}</button><div className="mt-3 flex items-center gap-2"><CircleDot className="size-3.5" /> No problems</div></div>
+      </section>
+      <section className="flex min-w-0 flex-1 flex-col bg-background"><div className="flex h-11 shrink-0 items-center overflow-auto border-b bg-card px-2">{openFiles.map(name => <div key={name} className={`flex h-full shrink-0 items-center gap-2 border-b-2 px-3 text-xs ${activeFile === name ? 'border-primary' : 'border-transparent text-muted-foreground'}`}><button onClick={() => setActiveFile(name)}>{name}</button><button aria-label={`Close ${name}`} onClick={() => { const next = openFiles.filter(x => x !== name); setOpenFiles(next); if (activeFile === name) setActiveFile(next[next.length - 1] || '') }}><X className="size-3" /></button></div>)}<Button variant="ghost" size="icon" aria-label="New file" className="ml-1 size-8" onClick={() => { const name = `untitled-${openFiles.length + 1}.tsx`; setOpenFiles([...openFiles, name]); setActiveFile(name); setNotice('Created untitled file') }}><Plus /></Button></div><div className="flex min-h-0 flex-1 overflow-auto"><div className="w-12 shrink-0 select-none border-r py-4 text-right font-mono text-xs leading-6 text-muted-foreground/60">{code.map((_,i) => <div key={i} className="px-3">{i+1}</div>)}</div><pre className="min-w-[520px] flex-1 p-4 font-mono text-[13px] leading-6 text-muted-foreground"><code>{code.map((line,i) => <div key={i} className={line.includes('import') || line.includes('export') || line.includes('const') || line.includes('return') ? 'text-primary' : line.includes('<') ? 'text-foreground' : ''}>{line || ' '}</div>)}</code></pre><div className="hidden w-14 shrink-0 border-l p-2 lg:block"><div className="flex flex-col gap-0.5 opacity-60">{Array.from({length:34}).map((_,i) => <div key={i} className={`h-1 rounded-sm ${i%5===0?'bg-primary/70':'bg-muted-foreground/40'}`} style={{width:`${35+(i*17)%55}%`}} />)}</div></div></div>
+        <div className="flex shrink-0 flex-col border-t bg-card"><div className="flex h-9 items-center gap-5 border-b px-3 text-[11px] font-medium text-muted-foreground"><button onClick={() => setBottom('terminal')} className={bottom === 'terminal' ? 'h-full border-b-2 border-primary text-foreground' : ''}>Terminal</button><button onClick={() => setBottom('problems')} className={bottom === 'problems' ? 'h-full border-b-2 border-primary text-foreground' : ''}>Problems <span className="ml-1 rounded bg-accent px-1.5">0</span></button><button onClick={() => setBottom('output')} className={bottom === 'output' ? 'h-full border-b-2 border-primary text-foreground' : ''}>Output</button><MoreHorizontal className="ml-auto size-4" /></div>{bottom === 'terminal' ? <div className="flex h-24 flex-col gap-1 overflow-auto p-3 font-mono text-[11px] text-muted-foreground">{terminal.map((x,i) => <div key={i}>{x}</div>)}<div className="flex gap-2"><span className="text-primary">$</span><input aria-label="Terminal command" onKeyDown={e => { if (e.key === 'Enter') { setTerminal([...terminal, (e.target as HTMLInputElement).value, 'command completed']); (e.target as HTMLInputElement).value = '' } }} className="flex-1 bg-transparent outline-none" placeholder="Type a command..." /></div></div> : <div className="h-24 p-3 font-mono text-[11px] text-muted-foreground">{bottom === 'problems' ? 'No problems have been detected in the workspace.' : notice}</div>}</div><div className="flex h-10 shrink-0 items-center justify-between border-t bg-card px-3 text-xs text-muted-foreground"><div className="flex items-center gap-3"><span className="flex items-center gap-1"><GitBranch className="size-3.5" /> main</span><span>Ln 4, Col 28</span><span className="hidden sm:inline">Spaces: 2</span></div><div className="flex items-center gap-3"><button onClick={() => { setBottom('terminal'); setTerminal([...terminal, 'pnpm dev', 'ready']) }} className="hover:text-foreground">Run</button><span>TypeScript JSX</span><span>UTF-8</span></div></div></section>
+      {chatOpen && <aside className="flex w-80 shrink-0 flex-col border-l bg-card max-lg:hidden"><div className="flex h-11 items-center justify-between border-b px-4"><div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="size-4" /> Ask Cursor</div><Button variant="ghost" size="icon" aria-label="Close chat" className="size-8" onClick={() => setChatOpen(false)}><X /></Button></div><div className="flex flex-1 flex-col gap-3 overflow-auto p-4"><div className="rounded-lg border bg-background p-3 text-sm leading-6">How can I help with your code today?</div>{messages.map((m,i) => <div key={i} className={`rounded-lg border p-3 text-xs leading-5 ${m.startsWith('You:') ? 'ml-4 bg-accent' : 'bg-background'}`}>{m}</div>)}<div className="flex flex-wrap gap-2">{['Explain this file','Find bugs','Refactor'].map(x => <button key={x} onClick={() => send(x)} className="rounded-md border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent">{x}</button>)}</div></div><div className="border-t p-3"><div className="rounded-lg border bg-background p-2"><textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Ask anything..." className="min-h-16 w-full resize-none bg-transparent p-1 text-sm outline-none" /><div className="flex items-center justify-between"><div className="flex gap-1"><Button variant="ghost" size="icon" aria-label="Attach file" className="size-7" onClick={() => action('Attachment ready')}><Plus /></Button><Button variant="ghost" size="icon" aria-label="Add terminal context" className="size-7" onClick={() => setPrompt(`${prompt} [terminal context]`)}><TerminalSquare /></Button></div><Button size="icon" aria-label="Send prompt" className="size-7" disabled={!prompt.trim()} onClick={() => send()}><Play /></Button></div></div><div className="mt-2 text-center text-[10px] text-muted-foreground">{notice}</div></div></aside>}
+      {!chatOpen && <Button onClick={() => setChatOpen(true)} aria-label="Open chat" size="icon" className="fixed bottom-8 right-5 rounded-full shadow-lg"><MessageSquare /></Button>}
+    </div><div className="flex h-6 shrink-0 items-center justify-between border-t bg-primary px-3 text-[10px] text-primary-foreground"><span className="flex items-center gap-2"><Code2 className="size-3" /> {notice}</span><span className="flex items-center gap-3"><span>Prettier</span><span>0 errors</span><Command className="size-3" /></span></div>
+  </main>
 }
